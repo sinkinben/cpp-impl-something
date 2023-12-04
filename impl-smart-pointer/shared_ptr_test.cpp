@@ -1,21 +1,28 @@
-#include <assert.h>
-#include <memory>
-#include <iostream>
 #include "shared_ptr.hpp"
+#include <assert.h>
+#include <iostream>
 
 class Node
 {
-public:
-    Node() { std::cout << "Node()\n"; }
-    ~Node() { std::cout << "~Node()\n"; }
-    void print() { std::cout << "Node::print()\n"; }
+  public:
+    Node()
+    {
+        std::cout << "Node()\n";
+    }
+    ~Node()
+    {
+        std::cout << "~Node()\n";
+    }
+    void print()
+    {
+        std::cout << "Node::print()\n";
+    }
 };
-
 
 void test_shared_ptr()
 {
-    // using namespace std;
-    using namespace impl;
+    // using std::shared_ptr;
+    using impl::shared_ptr;
 
     // Case 1: allocate a object
     shared_ptr<Node> node(new Node());
@@ -32,7 +39,7 @@ void test_shared_ptr()
     shared_ptr<Node> node2(new Node(), customed_deleter());
 
     // Case 2: allocate an array of class Node, customize deleter with lambda
-    shared_ptr<Node> arr(new Node[3], [](Node* p) { delete[] p; });
+    shared_ptr<Node> arr(new Node[3], [](Node *p) { delete[] p; });
     assert(arr.use_count() == 1);
 
     // Case 3: init with copy ctor
@@ -57,9 +64,7 @@ void test_shared_ptr()
     node->print();
     for (int i = 0; i < 3; ++i)
         arr3.get()[i].print();
-
 }
-
 
 int main()
 {

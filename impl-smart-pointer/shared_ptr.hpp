@@ -1,87 +1,114 @@
 /* Implement shared_ptr of STL */
 
 #pragma once
+#include <functional>
+#include <memory>
 #include <stdint.h>
 
 namespace impl
 {
-template<class T>
-struct default_deleter
+template <class T> struct default_deleter
 {
-    void operator()(T *p) { delete p; }
+    void operator()(T *p)
+    {
+        delete p;
+    }
 };
 
-template<class T>
-class shared_ptr
+/* Control Block for shared_ptr */
+template <class T> class ctl_block
 {
-    private:
-        T *ptr;
-        uint32_t *ref_cnt;
-        std::function<void(T *)> deleter;
+  public:
+    int ref_cnt;
+    std::function<void(T *)> deleter;
+    ctl_block(std::function<void(T *)> del) : ref_cnt(1), deleter(del)
+    {
+    }
+};
 
-        void clear()
-        {
-            if (--(*ref_cnt) == 0)
-            {
-                if (ptr != nullptr)
-                    deleter(ptr);
-                delete ref_cnt;
-                ptr = nullptr, ref_cnt = nullptr;
-            }
-        }
-    public:
-        // Default ctor and common ctor
-        shared_ptr(T *p = nullptr, std::function<void(T*)> del = default_deleter<T>()) : ptr(p), ref_cnt(new uint32_t{1}), deleter(del) {}
+template <class T> class shared_ptr
+{
+  private:
+    T *ptr;
+    ctl_block<T> *ctl;
 
-        // Default dtor
-        virtual ~shared_ptr()
+    void clear()
+    {
+        if (--(ctl->ref_cnt) == 0)
         {
-            if (ref_cnt != nullptr && *ref_cnt != 0)
-                clear();
-        }
-
-        // Copy ctor
-        shared_ptr(const shared_ptr<T> &sp)
-        {
-            ptr = sp.ptr, ref_cnt = sp.ref_cnt, deleter = sp.deleter;
             if (ptr != nullptr)
-                ++(*ref_cnt);
+                ctl->deleter(ptr);
+            delete ctl;
+            ptr = nullptr, ctl = nullptr;
         }
+    }
 
-        // Move ctor
-        shared_ptr(shared_ptr<T> &&sp)
+  public:
+    // Default ctor and common ctor
+    shared_ptr(T *p = nullptr, std::function<void(T *)> del = default_deleter<T>()) : ptr(p), ctl(new ctl_block(del))
+    {
+    }
+
+    // Default dtor
+    virtual ~shared_ptr()
+    {
+        if (ctl != nullptr && ctl->ref_cnt > 0)
+            clear();
+    }
+
+    // Copy ctor
+    shared_ptr(const shared_ptr<T> &sp)
+    {
+        ptr = sp.ptr, ctl = sp.ctl;
+        if (ptr != nullptr)
+            ++(ctl->ref_cnt);
+    }
+
+    // Move ctor
+    shared_ptr(shared_ptr<T> &&sp)
+    {
+        ptr = sp.ptr, ctl = sp.ctl;
+        sp.ptr = nullptr, sp.ctl = nullptr;
+    }
+
+    // Copy assignment
+    shared_ptr &operator=(const shared_ptr<T> &sp)
+    {
+        if (this != &sp)
         {
-            ptr = sp.ptr, ref_cnt = sp.ref_cnt, deleter = sp.deleter;
-            sp.ptr = nullptr, sp.ref_cnt = nullptr;
+            clear();
+            ptr = sp.ptr, ctl = sp.ctl;
+            if (ptr != nullptr)
+                ++(ctl->ref_cnt);
         }
+        return *this;
+    }
 
-        // Copy assignment
-        shared_ptr& operator=(const shared_ptr<T> &sp)
+    // Move assignment
+    shared_ptr &operator=(shared_ptr<T> &&sp)
+    {
+        if (this != &sp)
         {
-            if (this != &sp)
-            {
-                clear();
-                ptr = sp.ptr, ref_cnt = sp.ref_cnt, deleter = sp.deleter;
-                if (ptr != nullptr)
-                    ++(*ref_cnt);
-            }
-            return *this;
+            clear();
+            ptr = sp.ptr, ctl = sp.ctl;
+            sp.ptr = nullptr, sp.ctl = nullptr;
         }
+        return *this;
+    }
 
-        // Move assignment
-        shared_ptr& operator=(shared_ptr<T> &&sp)
-        {
-            if (this != &sp)
-            {
-                clear();
-                ptr = sp.ptr, ref_cnt = sp.ref_cnt, deleter = sp.deleter;
-                sp.ptr = nullptr, sp.ref_cnt = nullptr;
-            }
-            return *this;
-        }
+    int use_count() const
+    {
+        return ctl->ref_cnt;
+    }
 
-        uint32_t use_count() const { return *ref_cnt; }
-        T* operator->() const { return ptr; }
-        T* get() const { return ptr; }
+    T *operator->() const
+    {
+        return ptr;
+    }
+
+    T *get() const
+    {
+        return ptr;
+    }
 };
-}
+} // namespace impl
