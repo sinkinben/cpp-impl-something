@@ -48,7 +48,8 @@ void test_shared_ptr()
 
     // Case 4: init with move ctor
     shared_ptr<Node> arr3 = std::move(arr2);
-    assert(arr.use_count() == 2 && arr3.use_count() == 2 && arr2.get() == nullptr);
+    assert(arr.use_count() == 2 && arr3.use_count() == 2);
+    assert(arr2.get() == nullptr && arr2.use_count() == 0);
 
     // Case 5: assign with copy operator =
     shared_ptr<Node> arr4;

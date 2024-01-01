@@ -19,9 +19,9 @@ template <class T> struct default_deleter
 template <class T> class ctl_block
 {
   public:
-    int ref_cnt;
+    int shared_cnt;
     std::function<void(T *)> deleter;
-    ctl_block(std::function<void(T *)> del) : ref_cnt(1), deleter(del)
+    ctl_block(std::function<void(T *)> del) : shared_cnt(1), deleter(del)
     {
     }
 };
@@ -34,7 +34,7 @@ template <class T> class shared_ptr
 
     void clear()
     {
-        if (--(ctl->ref_cnt) == 0)
+        if (--(ctl->shared_cnt) == 0)
         {
             if (ptr != nullptr)
                 ctl->deleter(ptr);
@@ -52,7 +52,7 @@ template <class T> class shared_ptr
     // Default dtor
     virtual ~shared_ptr()
     {
-        if (ctl != nullptr && ctl->ref_cnt > 0)
+        if (ctl != nullptr && ctl->shared_cnt > 0)
             clear();
     }
 
@@ -61,7 +61,7 @@ template <class T> class shared_ptr
     {
         ptr = sp.ptr, ctl = sp.ctl;
         if (ptr != nullptr)
-            ++(ctl->ref_cnt);
+            ++(ctl->shared_cnt);
     }
 
     // Move ctor
@@ -79,7 +79,7 @@ template <class T> class shared_ptr
             clear();
             ptr = sp.ptr, ctl = sp.ctl;
             if (ptr != nullptr)
-                ++(ctl->ref_cnt);
+                ++(ctl->shared_cnt);
         }
         return *this;
     }
@@ -98,7 +98,7 @@ template <class T> class shared_ptr
 
     int use_count() const
     {
-        return ctl->ref_cnt;
+        return ctl->shared_cnt;
     }
 
     T *operator->() const
